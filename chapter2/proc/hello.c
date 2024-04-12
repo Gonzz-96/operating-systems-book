@@ -18,12 +18,16 @@ static struct file_operations proc_ops = {
 // called when module is loaded
 int proc_init(void) {
     // creates /proc/hello entry
-    proc_create(PROC_NAME, 0666, NULL, &proc_ops);
+    printk(KERN_INFO "Gonz: module loding");
+    // wrong line:
+    // proc_create(PROC_NAME, 0666, NULL, &proc_ops);
+    proc_create(PROC_NAME, 0666, NULL, (const struct proc_ops*)&proc_ops);
     return 0;
 }
 
 // called when module is removed
 void proc_exit(void) {
+    printk(KERN_INFO "Gonz: module removed");
     remove_proc_entry(PROC_NAME, NULL);
 }
 
@@ -42,7 +46,7 @@ ssize_t proc_read(struct file *file, char __user *usr_buf,
 
     completed = 1;
 
-    rv = sprintf(buffer, "Hello world\n");
+    rv = sprintf(buffer, "Hello world, Gonz!\n");
 
     // copies kernel space buffer to user space usr_buf
     copy_to_user(usr_buf, buffer, rv);
@@ -54,7 +58,7 @@ ssize_t proc_read(struct file *file, char __user *usr_buf,
 module_init(proc_init);
 module_exit(proc_exit);
 
-MODULE_LICENSE("GLP");
+MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Hello, world");
 MODULE_AUTHOR("SGG");
 
