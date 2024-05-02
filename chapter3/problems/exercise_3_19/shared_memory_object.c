@@ -9,10 +9,11 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 
+#include "command.h"
+
 static const short SHMO_SIZE = 4096;
 static const char *SHMO_NAME = "OS";
 
-char **commargv(int, char **);
 struct ShMObj *open_shmo(const char *, int); 
 void write_to_shmo(struct ShMObj *, struct timeval *);
 
@@ -71,20 +72,6 @@ int main(int argc, char *argv[]) {
     }
 
     return 0;
-}
-
-char **commargv(int argc, char *argv[]) {
-    char **newargv = (char **)malloc(argc * sizeof(char *));
-    for (int i = 0; i < argc - 1; i++) {
-        newargv[i] = (char *)malloc(strlen(argv[i+1]) * sizeof(char));
-        newargv[i] = argv[i+1];
-    }
-    // following the convention of the 'exec' family of system calls, the "argv" argument
-    // must always start with the name of the program to execute, and end with a 
-    // null pointer otherwise, the function will return an error
-    newargv[argc-1] = NULL;
-    
-    return newargv;
 }
 
 struct ShMObj *open_shmo(const char *name, int size) {
