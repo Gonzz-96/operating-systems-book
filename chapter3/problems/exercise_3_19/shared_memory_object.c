@@ -9,8 +9,8 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 
-static const short shmo_size = 4096;
-static const char *shmo_name = "OS";
+static const short SHMO_SIZE = 4096;
+static const char *SHMO_NAME = "OS";
 
 char **commargv(int, char **);
 struct ShMObj *open_shmo(const char *, int); 
@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
     } else if (pid == 0) {
         char *comm = argv[1];
         struct timeval init;
-        shmo = open_shmo(shmo_name, shmo_size);
+        shmo = open_shmo(SHMO_NAME, SHMO_SIZE);
         gettimeofday(&init, NULL);
         write_to_shmo(shmo, &init);       
         // the 'exec' command family will replace the image of the current process
@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
     } else {
         wait(NULL);
         
-        shmo = open_shmo(shmo_name, shmo_size);
+        shmo = open_shmo(SHMO_NAME, SHMO_SIZE);
         char *initstr = shmo->ptr;
         printf("time: parent -> %s\n", initstr); 
 
@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
         int init = atoi(initstr);
         printf("Elapsed time: %ds\n", end.tv_sec - init);
 
-        shm_unlink(shmo_name);
+        shm_unlink(SHMO_NAME);
     }
 
     return 0;
