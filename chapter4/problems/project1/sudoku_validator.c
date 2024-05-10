@@ -3,34 +3,54 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-int **read_sudoku();
-void print_sudoku(int **);
+enum sud_component {
+    ROW,
+    COLUMN
+};
 
-void *check_quadrant(void *);
-void *check_columns (void *);
-void *check_rows    (void *);
-
-struct args {
+struct args_t {
     int columns_ok;
     int rows_ok;
     int quadrants_ok;
     int **sudoku;
 };
 
-pthread_t *create_thread(void *(*)(void *), struct args *);
+struct args_component_t {
+    struct args_t *args;
+    enum sud_component component;
+};
+
+int **read_sudoku();
+void print_sudoku(int **);
+
+void *check         (void *);
+void *check_quadrant(void *);
+
+pthread_t *create_thread(void *(*)(void *), struct args_component_t *);
 
 int main(int argc, char *argv[]) {
 
     int **sudoku = read_sudoku();
-    struct args t_args;
-    t_args.sudoku = sudoku;
-    print_sudoku(t_args.sudoku);
+    print_sudoku(sudoku);
 
-    pthread_t *rows_thread = create_thread(check_rows, &t_args);
+    struct args_component_t row_args;
+    struct args_component_t col_args;
+    struct args_t args;
+    args.sudoku        = sudoku;
+    // TODO(gonz) for some reason, this 2 lines will make the code crash
+    row_args.args      = &args;
+    row_args.component = ROW;
+    col_args.args      = &args;
+    col_args.component = COLUMN;
+
+    pthread_t *rows_thread = create_thread(check, &row_args);
+    pthread_t *cols_thread = create_thread(check, &col_args);
 
     pthread_join(*rows_thread, NULL);
+    pthread_join(*cols_thread, NULL);
 
-    printf("rows: %d\n", t_args.rows_ok);
+    printf("rows: %d\n", args.rows_ok);
+    printf("columns: %d\n", args.columns_ok);
     print_sudoku(sudoku);
 
     return 0;
@@ -50,38 +70,52 @@ int **read_sudoku() {
     return nums;
 }
 
-pthread_t *create_thread(void *(*f)(void *), struct args *t_args) {
+pthread_t *create_thread(void *(*f)(void *), struct args_component_t *args) {
     pthread_t *tid = (pthread_t *)malloc(sizeof(pthread_t));
     pthread_attr_t attr;
     pthread_attr_init(&attr);
-    pthread_create(tid, &attr, f, t_args);
+    pthread_create(tid, &attr, f, args);
     return tid;
 }
 
-void *check_rows(void *arg) {
-    struct args *t_args = (struct args *)arg;
-    int **sudoku = t_args->sudoku;
+void *check(void *arg) {
+    struct args_component_t *args_component = (struct args_component_t *)arg;
+    struct args_t *args = args_component->args;
+    int **sudoku = args->sudoku;
     for (int i = 0; i < 9; i++) {
         int *row_map = (int *)calloc(9, sizeof(int));
         for (int j = 0; j < 9; j++) {
-            int n = sudoku[i][j];
-            printf("thread: %d\n", n);
+            int column;
+            int row;
+            switch (args_component->component) {
+                case ROW:
+                    column = i;
+                    row    = j;
+                    break;
+                default:
+                    column = j;
+                    row    = i;
+                    break;
+            }
+            int n = sudoku[column][row];
             if (row_map[n] == 0) {
                 row_map[n] = 1;
             } else {
-                t_args->rows_ok = -1;
+                args->rows_ok = -1;
                 free(row_map);
                 pthread_exit(0);
             }
         }
         free(row_map);
     }
-    t_args->rows_ok = 1;
-    pthread_exit(0);
-}
-
-void *check_columns(void *arg) {
-    int column = *((int *)arg);
+    switch (args_component->component) {
+    case ROW:
+        args->rows_ok = 1;
+        break;
+    default:
+        args->columns_ok = 1;
+        break;
+    }
     pthread_exit(0);
 }
 
