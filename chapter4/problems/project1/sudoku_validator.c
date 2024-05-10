@@ -31,18 +31,14 @@ pthread_t *create_thread(void *(*)(void *), struct args_component_t *);
 int main(int argc, char *argv[]) {
 
     int **sudoku = read_sudoku();
-    print_sudoku(sudoku);
 
     struct args_t args;
     struct args_component_t row_args;
     struct args_component_t col_args;
     args.sudoku = sudoku;
-    // TODO(gonz) for some reason, this 4 lines will make the code crash
-    // my theory is that memory is not initialized for all three declared
-    // structures. however, using malloc didn't work either
     row_args.args      = &args;
-    row_args.component = ROW;
     col_args.args      = &args;
+    row_args.component = ROW;
     col_args.component = COLUMN;
 
     pthread_t *rows_thread = create_thread(check, &row_args);
@@ -51,15 +47,16 @@ int main(int argc, char *argv[]) {
     pthread_join(*rows_thread, NULL);
     pthread_join(*cols_thread, NULL);
 
+    printf("For the next sudoku board:\n\n");
+    print_sudoku(sudoku);
     printf("rows: %d\n", args.rows_ok);
     printf("columns: %d\n", args.columns_ok);
-    print_sudoku(sudoku);
 
     return 0;
 }
 
 int **read_sudoku() {
-    char *num;
+    char *num = NULL;
     size_t n;
     int **nums = (int **)malloc(9 * sizeof(int *));
     for (int i = 0; i < 9; i++) {
@@ -83,6 +80,7 @@ pthread_t *create_thread(void *(*f)(void *), struct args_component_t *args) {
 void *check(void *arg) {
     struct args_component_t *args_component = (struct args_component_t *)arg;
     struct args_t *args = args_component->args;
+    enum sud_component component = args_component->component;
     int **sudoku = args->sudoku;
     for (int i = 0; i < 9; i++) {
         int *row_map = (int *)calloc(9, sizeof(int));
@@ -103,21 +101,18 @@ void *check(void *arg) {
             if (row_map[n] == 0) {
                 row_map[n] = 1;
             } else {
-                args->rows_ok = -1;
+                *(component == ROW
+                    ? &(args->rows_ok)
+                    : &(args->columns_ok)) = -1;
                 free(row_map);
                 pthread_exit(0);
             }
         }
         free(row_map);
     }
-    switch (args_component->component) {
-    case ROW:
-        args->rows_ok = 1;
-        break;
-    default:
-        args->columns_ok = 1;
-        break;
-    }
+    *(component == ROW
+        ? &(args->rows_ok)
+        : &(args->columns_ok)) = 1;
     pthread_exit(0);
 }
 
@@ -132,4 +127,6 @@ void print_sudoku(int **sudoku) {
         }
         printf("\n");
     }
+    printf("\n");
 }
+
