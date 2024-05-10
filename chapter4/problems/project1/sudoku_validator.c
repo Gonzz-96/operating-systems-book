@@ -33,12 +33,12 @@ int main(int argc, char *argv[]) {
     int **sudoku = read_sudoku();
     print_sudoku(sudoku);
 
+    struct args_t args;
     struct args_component_t row_args;
     struct args_component_t col_args;
-    struct args_t args;
-    args.sudoku        = sudoku;
+    args.sudoku = sudoku;
     // TODO(gonz) for some reason, this 4 lines will make the code crash
-    // my theory is that memory is not initialized for all thre declared
+    // my theory is that memory is not initialized for all three declared
     // structures. however, using malloc didn't work either
     row_args.args      = &args;
     row_args.component = ROW;
