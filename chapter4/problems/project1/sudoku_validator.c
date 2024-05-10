@@ -37,7 +37,9 @@ int main(int argc, char *argv[]) {
     struct args_component_t col_args;
     struct args_t args;
     args.sudoku        = sudoku;
-    // TODO(gonz) for some reason, this 2 lines will make the code crash
+    // TODO(gonz) for some reason, this 4 lines will make the code crash
+    // my theory is that memory is not initialized for all thre declared
+    // structures. however, using malloc didn't work either
     row_args.args      = &args;
     row_args.component = ROW;
     col_args.args      = &args;
