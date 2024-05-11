@@ -64,6 +64,7 @@ int **read_sudoku() {
         for (int j = 0; j < 9; j++) {
             getline(&num, &n, stdin);
             nums[i][j] = atoi(num);
+            free(num);
         }
     }
     return nums;
