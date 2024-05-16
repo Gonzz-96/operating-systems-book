@@ -16,6 +16,13 @@ void shell_loop();
 char *read_comm();
 char **tokenize(char *);
 struct comm_token *new_token();
+void check_exit_command_or_exit(char **);
+void check_previous_command(char **, char ***);
+
+struct command {
+    char **tokens;
+    int num_tokens;
+};
 
 int main() {
     
@@ -34,11 +41,11 @@ void shell_loop() {
 
         char *comm = read_comm();
         tokenized_command = tokenize(comm);
-        if (tokenized_command != NULL && !strcmp(tokenized_command[0], "exit")) {
-            exit(0);
-        } else if (!strcmp(tokenized_command[0], "!!")) {
-            tokenized_command = previous_command;
+        if (tokenized_command == NULL) {
+            continue;
         }
+        check_exit_command_or_exit(tokenized_command);
+        check_previous_command(previous_command, &tokenized_command);
 
         pid_t pid = fork();
         if (pid < 0) {
@@ -76,8 +83,6 @@ struct comm_token {
     char *str_token;
     struct comm_token *next;
 };
-
-
 
 char **tokenize(char *raw_comm) {
     char *comm = (char *)malloc(strlen(raw_comm) * sizeof(char));
@@ -124,5 +129,17 @@ char **tokenize(char *raw_comm) {
 
 struct comm_token *new_token() {
     return (struct comm_token *)malloc(sizeof(struct comm_token));
+}
+
+void check_exit_command_or_exit(char **command) {
+    if (!strcmp(command[0], "exit")) {
+        exit(0);
+    }
+}
+
+void check_previous_command(char **previous_comm, char ***current_comm) {
+    if (!strcmp((*current_comm)[0], "!!")) {
+        *current_comm = previous_comm;
+    }
 }
 
