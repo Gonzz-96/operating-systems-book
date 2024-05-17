@@ -27,6 +27,8 @@ _TaskNode *_head_node = NULL;
 _TaskNode *_tail_node = NULL;
 
 void add(char *name, int priority, int burst) {
+    // ignoring priority on purpose as fcfs
+    // scheduling algorithm doesn't need it
     Task *new_task      = _new_task(name, burst);
     _TaskNode *new_node = _new_task_node(new_task);
     if (_head_node == NULL) {
