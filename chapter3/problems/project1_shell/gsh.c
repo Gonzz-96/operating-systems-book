@@ -14,10 +14,11 @@
 
 void shell_loop();
 char *read_comm();
-char **tokenize(char *);
-struct comm_token *new_token();
 void check_exit_command_or_exit(char **);
 void check_previous_command(char **, char ***);
+struct command *tokenize(char *);
+struct comm_token *new_token();
+void check_background_request(int *, struct command *);
 
 struct command {
     char **tokens;
@@ -25,40 +26,48 @@ struct command {
 };
 
 int main() {
-    
     shell_loop(); 
-
     return 0;
 }
 
 void shell_loop() {
     int should_run = 1;
-    char **tokenized_command;
-    char **previous_command;
+    int should_wait_child = 1;
+    struct command *tokenized_command = NULL;
+    struct command *previous_command  = NULL;
     while (should_run) {
         printf("gsh > ");
         fflush(stdout);
 
         char *comm = read_comm();
+        should_wait_child = 1;
         tokenized_command = tokenize(comm);
         if (tokenized_command == NULL) {
             continue;
         }
-        check_exit_command_or_exit(tokenized_command);
-        check_previous_command(previous_command, &tokenized_command);
+        check_exit_command_or_exit(tokenized_command->tokens);
+        if (previous_command != NULL) {
+            check_previous_command(previous_command->tokens, &(tokenized_command->tokens));
+        }
+        check_background_request(&should_wait_child, tokenized_command);
 
         pid_t pid = fork();
         if (pid < 0) {
             fprintf(stderr, "Fork failed");
             exit(1);
         } else if (pid == 0) { // child process
-            execvp(tokenized_command[0], tokenized_command);
+            char **tokens = tokenized_command->tokens;
+            execvp(tokens[0], tokens);
             exit(errno);
         } else {
-            int exit_status;
-            wait(&exit_status);
-            if (exit_status != 0) {
-                fprintf(stderr, "gsh: command not found: %s\n", tokenized_command[0]);
+            if (should_wait_child) {
+                int exit_status;
+                wait(&exit_status);
+                if (exit_status != 0) {
+                    fprintf(stderr, "gsh: command not found: %s\n", tokenized_command->tokens[0]);
+                }
+            } else {
+                printf("Process: [%d] in background\n", pid);
             }
             previous_command = tokenized_command;
         }
@@ -84,7 +93,7 @@ struct comm_token {
     struct comm_token *next;
 };
 
-char **tokenize(char *raw_comm) {
+struct command *tokenize(char *raw_comm) {
     char *comm = (char *)malloc(strlen(raw_comm) * sizeof(char));
     comm = strcpy(comm, raw_comm);
 
@@ -124,7 +133,11 @@ char **tokenize(char *raw_comm) {
         current = next;
     }
 
-    return str_tokens;
+    struct command *tokenized_command = (struct command *)malloc(sizeof(struct command));
+    tokenized_command->tokens = str_tokens;
+    tokenized_command->num_tokens  =  tokens;
+
+    return tokenized_command;
 }
 
 struct comm_token *new_token() {
@@ -133,6 +146,7 @@ struct comm_token *new_token() {
 
 void check_exit_command_or_exit(char **command) {
     if (!strcmp(command[0], "exit")) {
+        printf("Bye bye :)\n");
         exit(0);
     }
 }
@@ -143,3 +157,13 @@ void check_previous_command(char **previous_comm, char ***current_comm) {
     }
 }
 
+void check_background_request(int *should_wait_child, struct command *command) {
+    char *last_arg = command->tokens[command->num_tokens-1];
+    if (strlen(last_arg) == 1 && !strcmp(last_arg, "&")) {
+        command->tokens[command->num_tokens-1] = NULL;
+        *should_wait_child = 0;
+    } else if (last_arg[strlen(last_arg)-1] == '&') {
+        last_arg[strlen(last_arg)-1] = '\0';
+        *should_wait_child = 0;
+    }
+}   
